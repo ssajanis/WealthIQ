@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WealthIQ India
 
-## Getting Started
+Personal Indian household financial wealth calculator.
 
-First, run the development server:
+## What this is
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+A single-user web app that calculates your Financial Health Score based on income, expenses, investments, loans, and goals — all entered manually. No bank feeds. No external data. India/INR only.
+
+---
+
+## How to run locally (10 minutes)
+
+### Step 1 — Prerequisites
+
+You need Node.js installed. Check by opening a terminal and typing:
+```
+node --version
+```
+It should print a version number like `v20.x.x`. If not, download it from nodejs.org.
+
+### Step 2 — Get the code
+
+Open a terminal, then type:
+```
+git clone https://github.com/ssajanis/WealthIQ.git
+cd WealthIQ
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Step 3 — Install dependencies
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+You should see a message like "added 500 packages". If you see red errors, stop and ask for help.
 
-## Learn More
+### Step 4 — Set environment variables
 
-To learn more about Next.js, take a look at the following resources:
+Copy the example file:
+```
+cp .env.local.example .env.local
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open `.env.local` in any text editor and fill in the two values (get these from the Supabase dashboard → Settings → API):
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Step 5 — Start the app
 
-## Deploy on Vercel
+```
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open your browser and go to: **http://localhost:3000**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+You should see the WealthIQ home page.
+
+---
+
+## How to deploy to Vercel
+
+1. Push your changes to GitHub (`git push origin main`).
+2. Vercel automatically picks up the push and deploys within ~2 minutes.
+3. Open your Vercel dashboard to see the live URL.
+
+First-time setup:
+- Go to vercel.com → Add New Project → Import from GitHub → select `WealthIQ`.
+- Under Environment Variables, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+---
+
+## Environment variables
+
+| Variable | Where to find it | Required |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → Settings → API → Project URL | Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API → anon public key | Yes |
+
+**Never put these in code or commit them to git.**
+
+---
+
+## How to restore the database
+
+All database structure lives in `/supabase/migrations`. To apply to a fresh Supabase project:
+
+1. Install Supabase CLI: `npm install -g supabase`
+2. Link your project: `supabase link --project-ref vbuurnummozdgfctelcn`
+3. Push migrations: `supabase db push`
+
+---
+
+## How to run tests
+
+```
+npm test              # unit tests (Jest)
+npm run test:e2e      # end-to-end tests (requires app running on localhost:3000)
+```
+
+---
+
+## Tech stack
+
+Next.js 14 · TypeScript · Tailwind CSS · shadcn/ui · Supabase · Recharts · Vercel
