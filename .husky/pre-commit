@@ -1,2 +1,8 @@
 npx lint-staged
-npx tsc --noEmit
+npm run typecheck
+
+# Block secrets from being committed (CLAUDE.md Section 6.4)
+if git diff --cached --name-only | xargs grep -rEl "(sk_live|sk_test|pk_live|pk_test|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9)" 2>/dev/null | grep -v "node_modules" | grep -v ".husky"; then
+  echo "ERROR: Possible secret detected in staged files. Remove it before committing."
+  exit 1
+fi
