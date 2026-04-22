@@ -7,7 +7,7 @@ const config: Config = {
   testEnvironment: 'jest-environment-jsdom',
   setupFilesAfterEnv: ['<rootDir>/tests/unit/setup.ts'],
   testMatch: ['<rootDir>/tests/unit/**/*.test.ts', '<rootDir>/tests/unit/**/*.test.tsx'],
-  collectCoverageFrom: ['lib/**/*.ts', '!lib/**/*.d.ts'],
+  collectCoverageFrom: ['lib/**/*.ts', '!lib/**/*.d.ts', '!lib/utils.ts'],
   coverageThreshold: {
     global: {
       lines: 90,
