@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import DataTable from '@/components/DataTable';
+import { computeNewRegimeTax, computeOldRegimeTax } from '@/lib/tax';
 
 const INR = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -391,6 +392,150 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Tax Regime Comparison ── */}
+      <TaxRegimeCompare />
     </div>
+  );
+}
+
+function TaxRegimeCompare() {
+  const [gross, setGross] = useState('');
+  const [section80C, setSection80C] = useState('150000');
+  const [section80D, setSection80D] = useState('25000');
+  const [homeLoan, setHomeLoan] = useState('0');
+  const [nps, setNps] = useState('0');
+
+  const INR_FMT = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  });
+
+  const income = Number(gross);
+  const newResult = income > 0 ? computeNewRegimeTax(income) : null;
+  const oldResult =
+    income > 0
+      ? computeOldRegimeTax(income, {
+          section80C: Number(section80C),
+          section80D: Number(section80D),
+          homeLoanInterest24b: Number(homeLoan),
+          npsAdditional80CCD: Number(nps),
+        })
+      : null;
+  const recommended =
+    newResult && oldResult
+      ? newResult.totalTax <= oldResult.totalTax
+        ? 'New Regime'
+        : 'Old Regime'
+      : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Tax Regime Comparison (FY 2025-26)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[
+            { label: 'Annual Gross Income (₹)', value: gross, set: setGross, ph: '1500000' },
+            {
+              label: 'Section 80C (₹, max ₹1.5L)',
+              value: section80C,
+              set: setSection80C,
+              ph: '150000',
+            },
+            {
+              label: 'Section 80D (₹, max ₹25K)',
+              value: section80D,
+              set: setSection80D,
+              ph: '25000',
+            },
+            { label: 'Home Loan Interest 24(b) (₹)', value: homeLoan, set: setHomeLoan, ph: '0' },
+            { label: 'NPS 80CCD(1B) (₹, max ₹50K)', value: nps, set: setNps, ph: '0' },
+          ].map(({ label, value, set, ph }) => (
+            <div key={label} className="space-y-1">
+              <label className="text-sm text-gray-600">{label}</label>
+              <input
+                className="border rounded-lg px-3 py-2 text-sm w-full"
+                type="number"
+                placeholder={ph}
+                value={value}
+                onChange={(e) => set(e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+
+        {newResult && oldResult && (
+          <div className="space-y-3">
+            {recommended && (
+              <p className="text-sm font-semibold text-green-700">
+                ✓ Recommended: {recommended} saves you{' '}
+                {INR_FMT.format(Math.abs(newResult.totalTax - oldResult.totalTax))} in tax
+              </p>
+            )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 text-left border-b">
+                    <th className="pb-2 font-medium">Metric</th>
+                    <th className="pb-2 font-medium">New Regime</th>
+                    <th className="pb-2 font-medium">Old Regime</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {[
+                    [
+                      'Taxable Income',
+                      INR_FMT.format(newResult.taxableIncome),
+                      INR_FMT.format(oldResult.taxableIncome),
+                    ],
+                    [
+                      'Base Tax',
+                      INR_FMT.format(newResult.baseTax),
+                      INR_FMT.format(oldResult.baseTax),
+                    ],
+                    ['Cess (4%)', INR_FMT.format(newResult.cess), INR_FMT.format(oldResult.cess)],
+                    [
+                      'Total Tax',
+                      INR_FMT.format(newResult.totalTax),
+                      INR_FMT.format(oldResult.totalTax),
+                    ],
+                    [
+                      'Effective Rate',
+                      `${newResult.effectiveRatePct.toFixed(1)}%`,
+                      `${oldResult.effectiveRatePct.toFixed(1)}%`,
+                    ],
+                    [
+                      'Take-Home Annual',
+                      INR_FMT.format(newResult.takeHomeAnnual),
+                      INR_FMT.format(oldResult.takeHomeAnnual),
+                    ],
+                  ].map(([metric, nv, ov]) => (
+                    <tr key={metric}>
+                      <td className="py-2 text-gray-600">{metric}</td>
+                      <td
+                        className={`py-2 font-medium ${newResult.totalTax <= oldResult.totalTax ? 'text-green-700' : ''}`}
+                      >
+                        {nv}
+                      </td>
+                      <td
+                        className={`py-2 font-medium ${oldResult.totalTax < newResult.totalTax ? 'text-green-700' : ''}`}
+                      >
+                        {ov}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-gray-400">
+              Disclaimer: This is an estimate. Consult a CA for tax planning.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

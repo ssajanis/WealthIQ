@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import DataTable from '@/components/DataTable';
+import { requiredMonthlySip } from '@/lib/calculations';
+import { Badge } from '@/components/ui/badge';
 
 const GOAL_LABELS: Record<Goal['goal_type'], string> = {
   retirement: 'Retirement',
@@ -225,9 +227,101 @@ export default function GoalsPage() {
         </CardContent>
       </Card>
 
+      {/* ── Goal Cards ── */}
+      {!loading && goals.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {goals.map((g) => {
+            const pct =
+              g.target_amount_inr > 0
+                ? Math.min(100, (g.current_savings_inr / g.target_amount_inr) * 100)
+                : 0;
+            const targetMs = new Date(g.target_date).getTime();
+            const monthsLeft = Math.max(
+              0,
+              Math.round((targetMs - Date.now()) / (1000 * 60 * 60 * 24 * 30)),
+            );
+            const requiredSip =
+              g.target_amount_inr > g.current_savings_inr
+                ? requiredMonthlySip(
+                    g.target_amount_inr - g.current_savings_inr,
+                    g.expected_return_pct,
+                    monthsLeft,
+                  )
+                : 0;
+            const actualSip = g.monthly_sip_inr ?? 0;
+            const onTrack = actualSip >= requiredSip * 0.9;
+            const statusLabel = pct >= 100 ? 'Done' : onTrack ? 'On Track' : 'Needs Attention';
+            const statusColor =
+              pct >= 100
+                ? 'bg-green-100 text-green-800'
+                : onTrack
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-red-100 text-red-800';
+
+            return (
+              <Card key={g.id}>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold">{g.goal_name}</p>
+                      <p className="text-xs text-gray-400">{GOAL_LABELS[g.goal_type]}</p>
+                    </div>
+                    <Badge className={statusColor}>{statusLabel}</Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Progress</span>
+                      <span className="font-medium">{pct.toFixed(1)}%</span>
+                    </div>
+                    <div className="bg-gray-100 rounded-full h-2">
+                      <div
+                        className="bg-indigo-500 h-2 rounded-full"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-gray-400">Target</p>
+                      <p className="font-medium">{INR.format(g.target_amount_inr)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">Saved</p>
+                      <p className="font-medium">{INR.format(g.current_savings_inr)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">By</p>
+                      <p className="font-medium">{g.target_date}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">Required SIP</p>
+                      <p className="font-medium text-indigo-600">
+                        {INR.format(Math.ceil(requiredSip))}/mo
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pt-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700 -ml-2"
+                      disabled={deleting === g.id}
+                      onClick={() => void handleDelete(g.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Fallback table for deletion if needed */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Your Goals</CardTitle>
+          <CardTitle className="text-base">All Goals (table)</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (

@@ -17,6 +17,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import DataTable from '@/components/DataTable';
+import {
+  sipFutureValue,
+  lumpsumFutureValue,
+  requiredMonthlySip,
+  sipGrowthTable,
+  inflationAdjusted,
+} from '@/lib/calculations';
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const INSTRUMENT_LABELS: Record<Investment['instrument'], string> = {
   mutual_fund_equity: 'Mutual Fund — Equity',
@@ -274,6 +282,238 @@ export default function InvestmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Calculators ── */}
+      <SipCalculator />
+      <LumpsumCalculator />
+      <GoalPlannerCalculator />
     </div>
+  );
+}
+
+const INR_FMT = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+function fmtInr(n: number) {
+  if (Math.abs(n) >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
+  if (Math.abs(n) >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
+  return INR_FMT.format(n);
+}
+
+function SipCalculator() {
+  const [sip, setSip] = useState('');
+  const [rate, setRate] = useState('12');
+  const [years, setYears] = useState('10');
+  const [stepUp, setStepUp] = useState('0');
+  const [inflation, setInflation] = useState('6');
+  const [result, setResult] = useState<{
+    nominal: number;
+    real: number;
+    invested: number;
+    table: Array<{ year: number; invested: number; corpus: number }>;
+  } | null>(null);
+
+  function compute() {
+    const p = Number(sip);
+    const r = Number(rate);
+    const y = Number(years);
+    const inf = Number(inflation);
+    if (!p || !r || !y) return;
+    const nominal = sipFutureValue(p, r, y * 12);
+    const real = inflationAdjusted(nominal, inf, y);
+    const table = sipGrowthTable(p, r, y);
+    setResult({ nominal, real, invested: p * 12 * y, table });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">SIP Projection Calculator</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[
+            { label: 'Monthly SIP (₹)', value: sip, set: setSip, ph: '25000' },
+            { label: 'Annual Return (%)', value: rate, set: setRate, ph: '12' },
+            { label: 'Years', value: years, set: setYears, ph: '10' },
+            { label: 'Annual Step-up (%)', value: stepUp, set: setStepUp, ph: '0' },
+            { label: 'Inflation (%)', value: inflation, set: setInflation, ph: '6' },
+          ].map(({ label, value, set, ph }) => (
+            <div key={label} className="space-y-1">
+              <label className="text-sm text-gray-600">{label}</label>
+              <input
+                className="border rounded-lg px-3 py-2 text-sm w-full"
+                type="number"
+                placeholder={ph}
+                value={value}
+                onChange={(e) => set(e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+        <Button onClick={compute}>Calculate</Button>
+        {result && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-gray-400">Total Invested</p>
+                <p className="font-semibold">{fmtInr(result.invested)}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">Nominal Corpus</p>
+                <p className="font-semibold text-indigo-600">{fmtInr(result.nominal)}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">Real Corpus (adj.)</p>
+                <p className="font-semibold">{fmtInr(result.real)}</p>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={result.table}>
+                <XAxis
+                  dataKey="year"
+                  label={{ value: 'Year', position: 'insideBottom', offset: -2 }}
+                />
+                <YAxis tickFormatter={(v) => `₹${(v / 1e5).toFixed(0)}L`} />
+                <Tooltip formatter={(v) => fmtInr(v as number)} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="invested"
+                  stroke="#94a3b8"
+                  dot={false}
+                  name="Invested"
+                />
+                <Line type="monotone" dataKey="corpus" stroke="#4f46e5" dot={false} name="Corpus" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LumpsumCalculator() {
+  const [amount, setAmount] = useState('');
+  const [rate, setRate] = useState('12');
+  const [years, setYears] = useState('10');
+  const [result, setResult] = useState<{ fv: number; gains: number } | null>(null);
+
+  function compute() {
+    const p = Number(amount);
+    const r = Number(rate);
+    const y = Number(years);
+    if (!p || !r || !y) return;
+    const fv = lumpsumFutureValue(p, r, y);
+    setResult({ fv, gains: fv - p });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Lumpsum Projection Calculator</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Amount (₹)', value: amount, set: setAmount, ph: '500000' },
+            { label: 'Annual Return (%)', value: rate, set: setRate, ph: '12' },
+            { label: 'Years', value: years, set: setYears, ph: '10' },
+          ].map(({ label, value, set, ph }) => (
+            <div key={label} className="space-y-1">
+              <label className="text-sm text-gray-600">{label}</label>
+              <input
+                className="border rounded-lg px-3 py-2 text-sm w-full"
+                type="number"
+                placeholder={ph}
+                value={value}
+                onChange={(e) => set(e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+        <Button onClick={compute}>Calculate</Button>
+        {result && (
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <p className="text-gray-400">Invested</p>
+              <p className="font-semibold">{fmtInr(Number(amount))}</p>
+            </div>
+            <div>
+              <p className="text-gray-400">Future Value</p>
+              <p className="font-semibold text-indigo-600">{fmtInr(result.fv)}</p>
+            </div>
+            <div>
+              <p className="text-gray-400">Gains</p>
+              <p className="font-semibold text-green-600">{fmtInr(result.gains)}</p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GoalPlannerCalculator() {
+  const [target, setTarget] = useState('');
+  const [current, setCurrent] = useState('0');
+  const [years, setYears] = useState('10');
+
+  const PROFILES = [
+    { label: 'Conservative (7%)', rate: 7 },
+    { label: 'Moderate (10%)', rate: 10 },
+    { label: 'Aggressive (12%)', rate: 12 },
+    { label: 'Very Aggressive (15%)', rate: 15 },
+  ] as const;
+
+  const results =
+    Number(target) > 0 && Number(years) > 0
+      ? PROFILES.map(({ label, rate }) => {
+          const remaining = Math.max(0, Number(target) - Number(current));
+          const months = Number(years) * 12;
+          const sip = requiredMonthlySip(remaining, rate, months);
+          return { label, sip };
+        })
+      : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Goal Planner — Required Monthly SIP</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Target Amount (₹)', value: target, set: setTarget, ph: '10000000' },
+            { label: 'Current Savings (₹)', value: current, set: setCurrent, ph: '0' },
+            { label: 'Years to Goal', value: years, set: setYears, ph: '10' },
+          ].map(({ label, value, set, ph }) => (
+            <div key={label} className="space-y-1">
+              <label className="text-sm text-gray-600">{label}</label>
+              <input
+                className="border rounded-lg px-3 py-2 text-sm w-full"
+                type="number"
+                placeholder={ph}
+                value={value}
+                onChange={(e) => set(e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+        {results && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {results.map(({ label, sip }) => (
+              <div key={label} className="border rounded-lg p-3 text-sm">
+                <p className="text-gray-500 text-xs">{label}</p>
+                <p className="font-semibold text-indigo-600 mt-1">{fmtInr(sip)}/mo</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

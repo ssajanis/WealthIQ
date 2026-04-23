@@ -634,3 +634,10 @@ export async function createSnapshot(data: Omit<Snapshot, 'id' | 'created_at'>):
   ]);
   return snapshot;
 }
+
+export async function deleteSnapshot(id: string): Promise<void> {
+  const rows = await readTab(TABS.SNAPSHOTS);
+  const rowIndex = rows.findIndex((r) => r[0] === id);
+  if (rowIndex === -1) return;
+  await clearRow(TABS.SNAPSHOTS, rowIndex + 1, 12);
+}
