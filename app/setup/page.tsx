@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { PinSetupSchema, type PinSetupInput } from '@/lib/schemas';
@@ -20,7 +20,8 @@ export default function SetupPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<PinSetupInput>({
-    resolver: zodResolver(PinSetupSchema),
+    resolver: zodResolver(PinSetupSchema) as Resolver<PinSetupInput>,
+    defaultValues: { pin: '', confirm_pin: '' },
   });
 
   async function onSubmit(data: PinSetupInput) {

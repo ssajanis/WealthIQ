@@ -6,6 +6,8 @@ import { z } from 'zod';
 const toNumber = (v: unknown) =>
   v === '' || v === null || v === undefined ? undefined : Number(v);
 
+const toString = (v: unknown) => (v === null || v === undefined ? '' : String(v));
+
 const positiveInr = z.preprocess(
   toNumber,
   z.number().min(0, 'Cannot be negative').max(1_000_000_000, 'Value exceeds ₹100 Cr limit'),
@@ -24,14 +26,19 @@ const percentageField = z.preprocess(
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be a valid date (YYYY-MM-DD)');
 
 // ─── PIN ───────────────────────────────────────────────────────────────────
+const pinField = z.preprocess(
+  toString,
+  z
+    .string()
+    .min(4, 'PIN must be at least 4 digits')
+    .max(6, 'PIN must be at most 6 digits')
+    .regex(/^\d+$/, 'PIN must contain only digits'),
+);
+
 export const PinSetupSchema = z
   .object({
-    pin: z
-      .string()
-      .min(4, 'PIN must be at least 4 digits')
-      .max(6, 'PIN must be at most 6 digits')
-      .regex(/^\d+$/, 'PIN must contain only digits'),
-    confirm_pin: z.string(),
+    pin: pinField,
+    confirm_pin: z.preprocess(toString, z.string()),
   })
   .refine((data) => data.pin === data.confirm_pin, {
     message: 'PINs do not match',
@@ -39,11 +46,7 @@ export const PinSetupSchema = z
   });
 
 export const PinLoginSchema = z.object({
-  pin: z
-    .string()
-    .min(4, 'PIN must be at least 4 digits')
-    .max(6, 'PIN must be at most 6 digits')
-    .regex(/^\d+$/, 'PIN must contain only digits'),
+  pin: pinField,
 });
 
 export type PinSetupInput = z.infer<typeof PinSetupSchema>;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { PinLoginSchema, type PinLoginInput } from '@/lib/schemas';
@@ -20,7 +20,8 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<PinLoginInput>({
-    resolver: zodResolver(PinLoginSchema),
+    resolver: zodResolver(PinLoginSchema) as Resolver<PinLoginInput>,
+    defaultValues: { pin: '' },
   });
 
   async function onSubmit(data: PinLoginInput) {
