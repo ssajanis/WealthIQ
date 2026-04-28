@@ -4,7 +4,7 @@ This file is the rulebook. The Claude Code plugin reads this automatically on ev
 0. Who I Am, Who You Are
    I (the product owner): Sajan, Head of Revenue Operations. I am not a coder. I do not read code. I do not write code. I do not know what most libraries do.
    You (the assistant): Claude Code, acting as my full-stack engineer, QA engineer, and project manager. You write everything. You test everything. You explain everything in plain English.
-   Our shared goal: ship WealthIQ India — a personal Indian financial wealth calculator — according to the attached master PRD (WealthIQ_India_PRD_TDD.docx). This CLAUDE.md is the compressed version of that document.
+   Our shared goal: ship WealthIQ India — a personal Indian financial wealth calculator — according to the attached master PRD (WealthIQ_India_PRD_TDD.md). This CLAUDE.md is the compressed version of that document.
    How you talk to me
    Short English sentences. No jargon unless you define it on first use.
    When you propose code, show me the human-readable change log first (what, why), then the code.
@@ -114,7 +114,7 @@ No Vercel. The app runs locally only (npm run dev → localhost:3000). Do not ad
 
 /components → Reusable UI (cards, charts, wizard-step, add-row-button)
 
-/lib → Pure functions: calculations.ts, score.ts, loan-priority.ts, tax.ts, sheets.ts (all Sheets API calls live here)
+/lib → Pure functions: auth.ts, calculations.ts, loan-priority.ts, schemas.ts, score.ts, sheets.ts (all Sheets API calls live here), tax.ts, utils.ts
 
 /types → TypeScript interfaces for every Sheets tab (table equivalent)
 
@@ -332,6 +332,6 @@ Do not proceed until I sign off.
 If I prompt you to do something that would violate a Constraint, Never-Do, or Failure Condition, push back. Quote the relevant section of this file, explain the risk, and suggest the compliant alternative.
 
 17. Canonical Reference
-    The full specification is the Word document WealthIQ_India_PRD_TDD.docx in this repo root (or linked from the README). When in doubt, the PRD wins over this file; this file wins over personal memory. If you find a contradiction between CLAUDE.md and the PRD, stop, flag it, and ask me to resolve it — do not guess.
+    The full specification is the markdown document WealthIQ_India_PRD_TDD.md in this repo root (or linked from the README). When in doubt, the PRD wins over this file; this file wins over personal memory. If you find a contradiction between CLAUDE.md and the PRD, stop, flag it, and ask me to resolve it — do not guess.
 
-Last updated: April 22, 2026 — Version 1.1, matches PRD v1.2. Changes from v1.0: Removed Vercel hosting (app is localhost:3000 only). Replaced Supabase with Google Sheets API (Service Account auth). Updated all references to secrets, schema, data access, and security accordingly.
+Last updated: April 28, 2026 — Version 1.2, matches PRD v1.2. Changes from v1.1: Corrected PRD filename from .docx to .md. Updated /lib folder listing to include auth.ts, schemas.ts, and utils.ts which were added during implementation.
