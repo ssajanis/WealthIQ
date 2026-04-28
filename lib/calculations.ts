@@ -110,6 +110,38 @@ export function sipGrowthTable(
 }
 
 /**
+ * Savings rate: (income - expenses) / income × 100. See PRD Section 6.7.
+ * @param monthlyIncome - Monthly income in INR
+ * @param monthlyExpenses - Monthly expenses in INR
+ * @returns Savings rate as a percentage (0–100+)
+ */
+export function savingsRate(monthlyIncome: number, monthlyExpenses: number): number {
+  if (monthlyIncome <= 0) return 0;
+  return ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100;
+}
+
+/**
+ * Debt-to-Income ratio: totalMonthlyEmi / monthlyIncome × 100. See PRD Section 6.7.
+ * @param totalMonthlyEmi - Sum of all monthly EMIs in INR
+ * @param monthlyIncome - Monthly income in INR
+ * @returns DTI ratio as a percentage
+ */
+export function debtToIncomeRatio(totalMonthlyEmi: number, monthlyIncome: number): number {
+  if (monthlyIncome <= 0) return 0;
+  return (totalMonthlyEmi / monthlyIncome) * 100;
+}
+
+/**
+ * Net worth: total assets minus total liabilities.
+ * @param totalAssetsInr - Sum of all investment current values in INR
+ * @param totalLiabilitiesInr - Sum of all loan outstanding balances in INR
+ * @returns Net worth in INR (can be negative)
+ */
+export function netWorth(totalAssetsInr: number, totalLiabilitiesInr: number): number {
+  return totalAssetsInr - totalLiabilitiesInr;
+}
+
+/**
  * Months remaining to reach a target given current savings, monthly SIP, and return.
  * Returns Infinity if target is unreachable with given inputs.
  */

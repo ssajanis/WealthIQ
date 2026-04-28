@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/investments', label: 'Investments' },
   { href: '/loans', label: 'Loans' },
   { href: '/goals', label: 'Goals' },
+  { href: '/compare', label: 'Compare' },
   { href: '/settings', label: 'Settings' },
 ] as const;
 
@@ -37,9 +38,9 @@ export default function AppNav() {
             <Link
               href={item.href}
               className={cn(
-                'block px-3 py-2 rounded-xl text-sm font-medium transition-colors',
+                'flex items-center min-h-[48px] px-3 py-2 rounded-xl text-sm font-medium transition-colors',
                 pathname.startsWith(item.href)
-                  ? 'bg-gray-100 text-gray-900'
+                  ? 'bg-primary-action/10 text-primary-action'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
               )}
               aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
@@ -53,7 +54,7 @@ export default function AppNav() {
       <div className="p-3 border-t border-gray-200">
         <button
           onClick={handleLogout}
-          className="w-full text-left px-3 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+          className="w-full text-left flex items-center min-h-[48px] px-3 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
         >
           Lock app
         </button>

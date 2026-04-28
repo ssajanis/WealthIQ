@@ -23,7 +23,7 @@ export default function DataTable<T extends { id: string }>({
 }: DataTableProps<T>) {
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-gray-400 py-4 text-center">
+      <p className="text-sm text-gray-500 py-4 text-center">
         No entries yet. Use the form above to add one.
       </p>
     );
@@ -56,7 +56,7 @@ export default function DataTable<T extends { id: string }>({
                   size="sm"
                   onClick={() => onDelete(row.id)}
                   disabled={deleting === row.id}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   aria-label="Delete row"
                 >
                   {deleting === row.id ? 'Deleting…' : 'Delete'}

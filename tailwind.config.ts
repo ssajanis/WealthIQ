@@ -12,7 +12,10 @@ const config: Config = {
         sans: ['var(--font-inter)', 'Calibri', 'Inter', 'sans-serif'],
       },
       fontSize: {
-        base: ['14px', { lineHeight: '1.6' }],
+        base: ['16px', { lineHeight: '1.6' }],
+        sm: ['13px', { lineHeight: '1.5' }],
+        label: ['15px', { lineHeight: '1.4', fontWeight: '500' }],
+        hint: ['13px', { lineHeight: '1.4' }],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -48,6 +51,11 @@ const config: Config = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        // Build 2.0 brand tokens
+        'primary-action': '#1A56DB',
+        gain: '#0D9488',
+        loss: '#DC2626',
+        neutral: '#6B7280',
       },
       borderRadius: {
         DEFAULT: '12px',
@@ -55,6 +63,9 @@ const config: Config = {
         md: 'calc(var(--radius) - 2px)',
         lg: 'var(--radius)',
         xl: 'calc(var(--radius) + 4px)',
+      },
+      spacing: {
+        'card-pad': '24px',
       },
     },
   },

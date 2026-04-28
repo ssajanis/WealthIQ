@@ -1,0 +1,15 @@
+{
+  "cookies": [
+    {
+      "name": "wiq_session",
+      "value": "d2VhbHRoaXEtc2FqYW4tMjAyNjoxNzc2OTM4MjI2Mzcw",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1776967026.377,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Strict"
+    }
+  ],
+  "origins": []
+}

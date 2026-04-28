@@ -1,27 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import {
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { computeFinancialHealthScore } from '@/lib/score';
+import { savingsRate, debtToIncomeRatio, netWorth } from '@/lib/calculations';
 import type { Income, Expense, Investment, Loan, Goal, Insurance, Snapshot } from '@/types';
+
+// Lazy-load all Recharts charts so the first paint is not blocked
+const LazyScoreDonut = lazy(() => import('@/components/dashboard/ScoreDonut'));
+const LazyIncomeExpenseBar = lazy(() => import('@/components/dashboard/IncomeExpenseBar'));
+const LazyNetWorthBar = lazy(() => import('@/components/dashboard/NetWorthBar'));
+const LazySavingsRatePie = lazy(() => import('@/components/dashboard/SavingsRatePie'));
+const LazyAssetAllocationPie = lazy(() => import('@/components/dashboard/AssetAllocationPie'));
+const LazyLoanBurdenBar = lazy(() => import('@/components/dashboard/LoanBurdenBar'));
 
 const INR = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -42,7 +35,11 @@ const BAND_COLORS: Record<string, string> = {
   Poor: 'bg-red-100 text-red-800',
 };
 
-const ASSET_COLORS = ['#4f46e5', '#0ea5e9', '#f59e0b', '#10b981', '#6b7280'];
+const CHART_SPINNER = (
+  <div className="h-[100px] flex items-center justify-center text-neutral text-sm">
+    Loading…
+  </div>
+);
 
 export default function DashboardPage() {
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -53,8 +50,10 @@ export default function DashboardPage() {
   const [insurance, setInsurance] = useState<Insurance[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [deletingSnap, setDeletingSnap] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   async function fetchAll() {
+    setLoading(true);
     const [inc, exp, inv, lo, go, ins, snap] = await Promise.all([
       fetch('/api/income').then((r) => r.json()) as Promise<{ ok: boolean; data?: Income[] }>,
       fetch('/api/expenses').then((r) => r.json()) as Promise<{ ok: boolean; data?: Expense[] }>,
@@ -74,6 +73,7 @@ export default function DashboardPage() {
     if (go.ok && go.data) setGoals(go.data);
     if (ins.ok && ins.data) setInsurance(ins.data);
     if (snap.ok && snap.data) setSnapshots(snap.data);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -91,39 +91,15 @@ export default function DashboardPage() {
     priorSnapshot,
   });
 
-  // Asset allocation pie data
-  const assetBuckets = { Equity: 0, Debt: 0, Gold: 0, 'Real Estate': 0, Other: 0 };
-  for (const inv of investments) {
-    const v = inv.current_value_inr;
-    if (['mutual_fund_equity', 'mutual_fund_hybrid', 'stocks'].includes(inv.instrument))
-      assetBuckets['Equity'] += v;
-    else if (['mutual_fund_debt', 'fd', 'rd', 'epf'].includes(inv.instrument))
-      assetBuckets['Debt'] += v;
-    else if (inv.instrument === 'gold') assetBuckets['Gold'] += v;
-    else if (inv.instrument === 'real_estate') assetBuckets['Real Estate'] += v;
-    else assetBuckets['Other'] += v;
-  }
-  const pieData = Object.entries(assetBuckets)
-    .filter(([, v]) => v > 0)
-    .map(([name, value]) => ({ name, value }));
+  const monthlyIncome = score.metrics.monthlyIncome;
+  const monthlyExpenses = score.metrics.monthlyExpensesInr;
+  const totalInvestments = score.metrics.totalInvestmentsInr;
+  const totalLiabilities = score.metrics.totalLiabilitiesInr;
+  const nw = netWorth(totalInvestments, totalLiabilities);
+  const sr = savingsRate(monthlyIncome, monthlyExpenses + score.metrics.totalEmisMonthly);
+  const dti = debtToIncomeRatio(score.metrics.totalEmisMonthly, monthlyIncome);
 
-  // Cash flow bar data
-  const cashFlowData = [
-    {
-      name: 'Monthly',
-      Income: Math.round(score.metrics.monthlyIncome),
-      Expenses: Math.round(score.metrics.monthlyExpensesInr),
-      EMIs: Math.round(score.metrics.totalEmisMonthly),
-    },
-  ];
-
-  // Radar data for the 8 dimensions
-  const radarData = score.dimensions.map((d) => ({
-    subject: d.label.replace(' ', '\n'),
-    score: Math.round(d.rawScore),
-  }));
-
-  const isEmpty = incomes.length === 0 && investments.length === 0;
+  const isEmpty = loading || (incomes.length === 0 && investments.length === 0);
 
   async function deleteSnapshot(id: string) {
     setDeletingSnap(id);
@@ -132,211 +108,184 @@ export default function DashboardPage() {
     setDeletingSnap(null);
   }
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+  if (loading) {
+    return (
+      <div className="space-y-5">
+        <h1>Dashboard</h1>
+        <p className="text-neutral text-sm">Loading your data…</p>
+      </div>
+    );
+  }
 
-      {isEmpty ? (
+  if (isEmpty) {
+    return (
+      <div className="space-y-5">
+        <h1>Dashboard</h1>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-gray-500 text-sm">
-              No data yet. Start by entering your income and expenses in{' '}
-              <a href="/financial-analysis" className="text-indigo-600 underline">
-                Financial Analysis
+            <p className="text-neutral text-sm">
+              No data yet — complete the wizard to see your score.{' '}
+              <a href="/financial-analysis" className="text-primary-action underline">
+                Add income &amp; expenses
               </a>
-              .
             </p>
           </CardContent>
         </Card>
-      ) : (
-        <>
-          {/* Row 1: Score + Net Worth */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Financial Health Score</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end gap-3">
-                  <span className="text-5xl font-bold text-gray-900">{score.total}</span>
-                  <span className="text-gray-400 text-lg mb-1">/100</span>
-                  <Badge className={`mb-1 ${BAND_COLORS[score.band] ?? ''}`}>{score.band}</Badge>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <h1>Dashboard</h1>
+
+      {/* 3-column KPI grid */}
+      <div className="grid grid-cols-3 gap-5">
+
+        {/* Card 1 — Financial Health Score (col span 1) */}
+        <Card className="min-h-[200px]">
+          <CardHeader className="pb-2">
+            <CardTitle>Financial Health Score</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-end gap-2">
+              <span className="text-4xl font-bold text-gray-900">{score.total}</span>
+              <span className="text-neutral mb-1">/100</span>
+              <Badge className={`mb-1 ${BAND_COLORS[score.band] ?? ''}`}>{score.band}</Badge>
+            </div>
+            <Suspense fallback={CHART_SPINNER}>
+              <LazyScoreDonut score={score.total} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+        {/* Card 2 — Monthly Income vs Expenses */}
+        <Card className="min-h-[200px]">
+          <CardHeader className="pb-2">
+            <CardTitle>Monthly Cash Flow</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex gap-6 text-sm">
+              <div>
+                <p className="text-neutral">Income</p>
+                <p className="font-semibold text-gain">{formatInr(monthlyIncome)}</p>
+              </div>
+              <div>
+                <p className="text-neutral">Expenses</p>
+                <p className="font-semibold text-loss">{formatInr(monthlyExpenses)}</p>
+              </div>
+            </div>
+            <Suspense fallback={CHART_SPINNER}>
+              <LazyIncomeExpenseBar income={monthlyIncome} expenses={monthlyExpenses} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+        {/* Card 3 — Net Worth */}
+        <Card className="min-h-[200px]">
+          <CardHeader className="pb-2">
+            <CardTitle>Net Worth</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className={`text-2xl font-bold ${nw >= 0 ? 'text-gain' : 'text-loss'}`}>
+              {formatInr(nw)}
+            </p>
+            <Suspense fallback={CHART_SPINNER}>
+              <LazyNetWorthBar assets={totalInvestments} liabilities={totalLiabilities} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+        {/* Card 4 — Savings Rate */}
+        <Card className="min-h-[200px]">
+          <CardHeader className="pb-2">
+            <CardTitle>Savings Rate</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className={`text-3xl font-bold ${sr >= 20 ? 'text-gain' : 'text-loss'}`}>
+              {sr.toFixed(1)}%
+            </p>
+            <p className="text-hint">Healthy target: ≥ 20%</p>
+            <Suspense fallback={CHART_SPINNER}>
+              <LazySavingsRatePie savingsRate={sr} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+        {/* Card 5 — Asset Allocation (spans 2 columns) */}
+        <Card className="col-span-2 min-h-[200px]">
+          <CardHeader className="pb-2">
+            <CardTitle>Asset Allocation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={CHART_SPINNER}>
+              <LazyAssetAllocationPie investments={investments} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+        {/* Card 6 — Loan Burden */}
+        <Card className="min-h-[200px]">
+          <CardHeader className="pb-2">
+            <CardTitle>Loan Burden (DTI)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className={`text-3xl font-bold ${dti <= 40 ? 'text-gain' : 'text-loss'}`}>
+              {dti.toFixed(1)}%
+            </p>
+            <p className="text-hint">Safe if &lt; 40%</p>
+            <Suspense fallback={CHART_SPINNER}>
+              <LazyLoanBurdenBar loans={loans} />
+            </Suspense>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      {/* Goal Progress */}
+      {goals.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Goal Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {goals.map((g) => {
+              const pct =
+                g.target_amount_inr > 0
+                  ? Math.min(100, (g.current_savings_inr / g.target_amount_inr) * 100)
+                  : 0;
+              return (
+                <div key={g.id}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium">{g.goal_name}</span>
+                    <span className="text-neutral">
+                      {formatInr(g.current_savings_inr)} / {formatInr(g.target_amount_inr)}
+                    </span>
+                  </div>
+                  <div className="bg-gray-100 rounded-full h-2">
+                    <div
+                      className="bg-primary-action h-2 rounded-full"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="mt-3 space-y-1">
-                  {score.dimensions.map((d) => (
-                    <div key={d.label} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 w-36 shrink-0">{d.label}</span>
-                      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                        <div
-                          className="bg-indigo-500 h-1.5 rounded-full"
-                          style={{ width: `${d.rawScore}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-500 w-8 text-right">
-                        {Math.round(d.rawScore)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Net Worth</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-3xl font-bold text-gray-900">
-                  {formatInr(score.metrics.netWorthInr)}
-                </p>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-gray-400">Annual Income</p>
-                    <p className="font-medium">{formatInr(score.metrics.annualIncomeInr)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Annual Expenses</p>
-                    <p className="font-medium">{formatInr(score.metrics.annualExpensesInr)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Total Investments</p>
-                    <p className="font-medium">{formatInr(score.metrics.totalInvestmentsInr)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Total Liabilities</p>
-                    <p className="font-medium text-red-600">
-                      {formatInr(score.metrics.totalLiabilitiesInr)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Savings Rate</p>
-                    <p className="font-medium">{score.metrics.savingsRatePct.toFixed(1)}%</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Liquid Fund (months)</p>
-                    <p className="font-medium">{score.metrics.liquidSavingsMonths.toFixed(1)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Row 2: Asset Allocation + Cash Flow */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {pieData.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Asset Allocation</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        dataKey="value"
-                        label={({ name, percent }) =>
-                          `${name} ${((percent as number) * 100).toFixed(0)}%`
-                        }
-                        labelLine={false}
-                      >
-                        {pieData.map((_, i) => (
-                          <Cell key={i} fill={ASSET_COLORS[i % ASSET_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v) => formatInr(v as number)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Monthly Cash Flow</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={cashFlowData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                    <XAxis dataKey="name" hide />
-                    <YAxis tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`} />
-                    <Tooltip formatter={(v) => formatInr(v as number)} />
-                    <Legend />
-                    <Bar dataKey="Income" fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Expenses" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="EMIs" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Row 3: Health Radar */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Health Dimensions Radar</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <RadarChart data={radarData}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
-                  <Radar dataKey="score" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.35} />
-                  <Tooltip />
-                </RadarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Row 4: Goal Progress */}
-          {goals.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Goal Progress</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {goals.map((g) => {
-                  const pct =
-                    g.target_amount_inr > 0
-                      ? Math.min(100, (g.current_savings_inr / g.target_amount_inr) * 100)
-                      : 0;
-                  return (
-                    <div key={g.id}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium">{g.goal_name}</span>
-                        <span className="text-gray-500">
-                          {formatInr(g.current_savings_inr)} / {formatInr(g.target_amount_inr)}
-                        </span>
-                      </div>
-                      <div className="bg-gray-100 rounded-full h-2">
-                        <div
-                          className="bg-indigo-500 h-2 rounded-full"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          )}
-        </>
+              );
+            })}
+          </CardContent>
+        </Card>
       )}
 
-      {/* Snapshots */}
+      {/* Saved Snapshots */}
       {snapshots.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Saved Snapshots</CardTitle>
+            <CardTitle>Saved Snapshots</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b">
+                  <tr className="text-left text-neutral border-b">
                     <th className="pb-2 font-medium">Name</th>
                     <th className="pb-2 font-medium">Date</th>
                     <th className="pb-2 font-medium">Score</th>
@@ -355,7 +304,7 @@ export default function DashboardPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-500 hover:text-red-700"
+                          className="text-loss hover:text-red-700"
                           disabled={deletingSnap === s.id}
                           onClick={() => void deleteSnapshot(s.id)}
                         >

@@ -89,10 +89,12 @@ export default function FinancialAnalysisPage() {
   async function onIncomeSubmit(data: IncomeInput) {
     setSubmittingIncome(true);
     setIncomeError('');
+    // User enters monthly; store annual (monthly × 12) in DB
+    const payload: IncomeInput = { ...data, gross_annual_inr: data.gross_annual_inr * 12 };
     const res = await fetch('/api/income', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     const json = (await res.json()) as { ok: boolean; error?: string };
     if (!json.ok) {
@@ -125,6 +127,7 @@ export default function FinancialAnalysisPage() {
   }
 
   const totalAnnualIncome = incomes.reduce((s, i) => s + i.gross_annual_inr, 0);
+  const totalMonthlyIncome = totalAnnualIncome / 12;
   const totalMonthlyExpenses = expenses.reduce((s, e) => s + e.monthly_amount_inr, 0);
 
   const scoreResult = computeFinancialHealthScore({
@@ -176,8 +179,9 @@ export default function FinancialAnalysisPage() {
         <div className="grid grid-cols-2 gap-4">
           <Card>
             <CardContent className="pt-4">
-              <p className="text-sm text-gray-500">Total Annual Income</p>
-              <p className="text-xl font-semibold">{INR.format(totalAnnualIncome)}</p>
+              <p className="text-sm text-gray-500">Total Monthly Income</p>
+              <p className="text-xl font-semibold">{INR.format(totalMonthlyIncome)}</p>
+              <p className="text-hint">Annual: {INR.format(totalAnnualIncome)}</p>
             </CardContent>
           </Card>
           <Card>
@@ -192,7 +196,7 @@ export default function FinancialAnalysisPage() {
       {/* ── Income ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Add Income Source</CardTitle>
+          <CardTitle className="text-base">Add Monthly Income Source</CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -236,14 +240,15 @@ export default function FinancialAnalysisPage() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="gross_annual">Annual Gross Income (₹)</Label>
+              <Label htmlFor="gross_annual">Monthly Gross Income (₹ per month)</Label>
               <Input
                 id="gross_annual"
                 type="number"
                 min={0}
-                placeholder="2500000"
+                placeholder="100000"
                 {...incomeForm.register('gross_annual_inr')}
               />
+              <p className="text-hint">We calculate your annual figure automatically.</p>
               {incomeForm.formState.errors.gross_annual_inr && (
                 <p className="text-sm text-red-600" role="alert">
                   {incomeForm.formState.errors.gross_annual_inr.message}
@@ -305,7 +310,7 @@ export default function FinancialAnalysisPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <DataTable
               rows={incomes}
@@ -314,8 +319,8 @@ export default function FinancialAnalysisPage() {
                 { key: 'source_type', label: 'Type' },
                 {
                   key: 'gross_annual_inr',
-                  label: 'Annual Gross',
-                  format: (v) => INR.format(Number(v)),
+                  label: 'Monthly Gross',
+                  format: (v) => INR.format(Number(v) / 12),
                 },
                 { key: 'tax_regime', label: 'Tax Regime' },
               ]}
@@ -390,7 +395,7 @@ export default function FinancialAnalysisPage() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="monthly_amount_exp">Monthly Amount (₹)</Label>
+              <Label htmlFor="monthly_amount_exp">Monthly Amount (₹ per month)</Label>
               <Input
                 id="monthly_amount_exp"
                 type="number"
@@ -398,6 +403,7 @@ export default function FinancialAnalysisPage() {
                 placeholder="40000"
                 {...expenseForm.register('monthly_amount_inr')}
               />
+              <p className="text-hint">We calculate your annual figure automatically.</p>
               {expenseForm.formState.errors.monthly_amount_inr && (
                 <p className="text-sm text-red-600" role="alert">
                   {expenseForm.formState.errors.monthly_amount_inr.message}
@@ -441,7 +447,7 @@ export default function FinancialAnalysisPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <DataTable
               rows={expenses}
@@ -467,90 +473,102 @@ export default function FinancialAnalysisPage() {
         </CardContent>
       </Card>
 
-      {/* ── Run Analysis ── */}
-      {(incomes.length > 0 || expenses.length > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Run Analysis</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              onClick={() => {
-                setShowAnalysis(true);
-                setSnapshotSaved(false);
-              }}
-            >
-              Compute Financial Health Score
-            </Button>
+      {/* ── Financial Health Score ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Financial Health Score</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <p className="text-sm text-gray-500">Loading…</p>
+          ) : incomes.length === 0 && expenses.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Add at least one income or expense above to compute your score.
+            </p>
+          ) : (
+            <>
+              <Button
+                onClick={() => {
+                  setShowAnalysis(true);
+                  setSnapshotSaved(false);
+                }}
+              >
+                Compute Financial Health Score
+              </Button>
 
-            {showAnalysis && (
-              <div className="space-y-4 border rounded-xl p-4 bg-white">
-                <div className="flex items-center gap-3">
-                  <span className="text-4xl font-bold text-gray-900">{scoreResult.total}</span>
-                  <span className="text-gray-400">/100</span>
-                  <Badge className={BAND_COLORS[scoreResult.band] ?? ''}>{scoreResult.band}</Badge>
-                </div>
-                <div className="space-y-1.5">
-                  {scoreResult.dimensions.map((d) => (
-                    <div key={d.label} className="flex items-center gap-2 text-sm">
-                      <span className="w-44 shrink-0 text-gray-600">{d.label}</span>
-                      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                        <div
-                          className="bg-indigo-500 h-1.5 rounded-full"
-                          style={{ width: `${d.rawScore}%` }}
-                        />
+              {showAnalysis && (
+                <div className="space-y-4 border rounded-xl p-4 bg-white">
+                  <div className="flex items-center gap-3">
+                    <span className="text-4xl font-bold text-gray-900">{scoreResult.total}</span>
+                    <span className="text-gray-500">/100</span>
+                    <Badge className={BAND_COLORS[scoreResult.band] ?? ''}>{scoreResult.band}</Badge>
+                  </div>
+                  <div className="space-y-1.5">
+                    {scoreResult.dimensions.map((d) => (
+                      <div key={d.label} className="flex items-center gap-2 text-sm">
+                        <span className="w-44 shrink-0 text-gray-600">{d.label}</span>
+                        <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                          <div
+                            className="bg-indigo-500 h-1.5 rounded-full"
+                            style={{ width: `${d.rawScore}%` }}
+                          />
+                        </div>
+                        <span className="w-8 text-right text-gray-500">
+                          {Math.round(d.rawScore)}
+                        </span>
                       </div>
-                      <span className="w-8 text-right text-gray-500">{Math.round(d.rawScore)}</span>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm pt-2">
+                    <div>
+                      <p className="text-gray-500">Net Worth</p>
+                      <p className="font-medium">{INR.format(scoreResult.metrics.netWorthInr)}</p>
                     </div>
-                  ))}
-                </div>
+                    <div>
+                      <p className="text-gray-500">Savings Rate</p>
+                      <p className="font-medium">
+                        {scoreResult.metrics.savingsRatePct.toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Debt-to-Income</p>
+                      <p className="font-medium">{scoreResult.metrics.dtiRatioPct.toFixed(1)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Liquid Fund</p>
+                      <p className="font-medium">
+                        {scoreResult.metrics.liquidSavingsMonths.toFixed(1)} months
+                      </p>
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm pt-2">
-                  <div>
-                    <p className="text-gray-400">Net Worth</p>
-                    <p className="font-medium">{INR.format(scoreResult.metrics.netWorthInr)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Savings Rate</p>
-                    <p className="font-medium">{scoreResult.metrics.savingsRatePct.toFixed(1)}%</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Debt-to-Income</p>
-                    <p className="font-medium">{scoreResult.metrics.dtiRatioPct.toFixed(1)}%</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Liquid Fund</p>
-                    <p className="font-medium">
-                      {scoreResult.metrics.liquidSavingsMonths.toFixed(1)} months
+                  {!snapshotSaved ? (
+                    <div className="flex gap-2 items-center pt-2">
+                      <input
+                        className="border rounded-lg px-3 py-2 text-sm flex-1"
+                        placeholder="Snapshot name (e.g. Q2 2026)"
+                        value={snapshotName}
+                        onChange={(e) => setSnapshotName(e.target.value)}
+                      />
+                      <Button
+                        disabled={!snapshotName.trim() || savingSnapshot}
+                        onClick={() => void saveSnapshot()}
+                      >
+                        {savingSnapshot ? 'Saving…' : 'Save Snapshot'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-green-600 font-medium">
+                      ✓ Snapshot saved — visible on Dashboard.
                     </p>
-                  </div>
+                  )}
                 </div>
-
-                {!snapshotSaved ? (
-                  <div className="flex gap-2 items-center pt-2">
-                    <input
-                      className="border rounded-lg px-3 py-2 text-sm flex-1"
-                      placeholder="Snapshot name (e.g. Q2 2026)"
-                      value={snapshotName}
-                      onChange={(e) => setSnapshotName(e.target.value)}
-                    />
-                    <Button
-                      disabled={!snapshotName.trim() || savingSnapshot}
-                      onClick={() => void saveSnapshot()}
-                    >
-                      {savingSnapshot ? 'Saving…' : 'Save Snapshot'}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-green-600 font-medium">
-                    ✓ Snapshot saved — visible on Dashboard.
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

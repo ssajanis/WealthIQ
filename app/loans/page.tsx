@@ -254,7 +254,7 @@ export default function LoansPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <DataTable
               rows={loans}
@@ -322,7 +322,7 @@ export default function LoansPage() {
                       <p className="text-sm font-medium">
                         {INR.format(ranked.loan.outstanding_inr)}
                       </p>
-                      <p className="text-xs text-gray-400">outstanding</p>
+                      <p className="text-xs text-gray-500">outstanding</p>
                     </div>
                   </div>
                 ))}
@@ -370,17 +370,17 @@ export default function LoansPage() {
                 return (
                   <div className="grid grid-cols-3 gap-3 text-sm">
                     <div>
-                      <p className="text-gray-400">Months Saved</p>
+                      <p className="text-gray-500">Months Saved</p>
                       <p className="font-semibold text-green-600">{sim.monthsSaved} months</p>
                     </div>
                     <div>
-                      <p className="text-gray-400">Interest Saved</p>
+                      <p className="text-gray-500">Interest Saved</p>
                       <p className="font-semibold text-green-600">
                         {INR.format(sim.interestSaved)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-400">New Tenure</p>
+                      <p className="text-gray-500">New Tenure</p>
                       <p className="font-semibold">{sim.newTenureMonths} months</p>
                     </div>
                   </div>

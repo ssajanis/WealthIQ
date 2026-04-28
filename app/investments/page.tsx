@@ -258,7 +258,7 @@ export default function InvestmentsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <DataTable
               rows={investments}
@@ -358,15 +358,15 @@ function SipCalculator() {
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
-                <p className="text-gray-400">Total Invested</p>
+                <p className="text-gray-500">Total Invested</p>
                 <p className="font-semibold">{fmtInr(result.invested)}</p>
               </div>
               <div>
-                <p className="text-gray-400">Nominal Corpus</p>
+                <p className="text-gray-500">Nominal Corpus</p>
                 <p className="font-semibold text-indigo-600">{fmtInr(result.nominal)}</p>
               </div>
               <div>
-                <p className="text-gray-400">Real Corpus (adj.)</p>
+                <p className="text-gray-500">Real Corpus (adj.)</p>
                 <p className="font-semibold">{fmtInr(result.real)}</p>
               </div>
             </div>
@@ -439,15 +439,15 @@ function LumpsumCalculator() {
         {result && (
           <div className="grid grid-cols-3 gap-3 text-sm">
             <div>
-              <p className="text-gray-400">Invested</p>
+              <p className="text-gray-500">Invested</p>
               <p className="font-semibold">{fmtInr(Number(amount))}</p>
             </div>
             <div>
-              <p className="text-gray-400">Future Value</p>
+              <p className="text-gray-500">Future Value</p>
               <p className="font-semibold text-indigo-600">{fmtInr(result.fv)}</p>
             </div>
             <div>
-              <p className="text-gray-400">Gains</p>
+              <p className="text-gray-500">Gains</p>
               <p className="font-semibold text-green-600">{fmtInr(result.gains)}</p>
             </div>
           </div>

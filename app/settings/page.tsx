@@ -214,7 +214,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <DataTable
               rows={assets}
@@ -366,7 +366,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <DataTable
               rows={insurance}
@@ -395,6 +395,9 @@ export default function SettingsPage() {
 
       {/* ── Tax Regime Comparison ── */}
       <TaxRegimeCompare />
+
+      {/* ── Risk Profile ── */}
+      <RiskProfileQuestionnaire />
     </div>
   );
 }
@@ -530,10 +533,215 @@ function TaxRegimeCompare() {
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               Disclaimer: This is an estimate. Consult a CA for tax planning.
             </p>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const RISK_QUESTIONS: { q: string; options: { label: string; score: number }[] }[] = [
+  {
+    q: '1. How long is your investment time horizon?',
+    options: [
+      { label: 'Less than 3 years', score: 1 },
+      { label: '3–7 years', score: 2 },
+      { label: 'More than 7 years', score: 3 },
+    ],
+  },
+  {
+    q: '2. If your portfolio dropped 20% in a month, you would:',
+    options: [
+      { label: 'Sell everything immediately', score: 1 },
+      { label: 'Wait and watch', score: 2 },
+      { label: 'Buy more at lower prices', score: 3 },
+    ],
+  },
+  {
+    q: '3. What is your primary investment goal?',
+    options: [
+      { label: 'Preserve capital — avoid losses', score: 1 },
+      { label: 'Steady growth with some income', score: 2 },
+      { label: 'Maximize long-term wealth', score: 3 },
+    ],
+  },
+  {
+    q: '4. What is your household annual income?',
+    options: [
+      { label: 'Below ₹10 L', score: 1 },
+      { label: '₹10 L – ₹30 L', score: 2 },
+      { label: 'Above ₹30 L', score: 3 },
+    ],
+  },
+  {
+    q: '5. How stable is your primary income source?',
+    options: [
+      { label: 'Uncertain / freelance / contract', score: 1 },
+      { label: 'Reasonably stable', score: 2 },
+      { label: 'Very stable / government / tenured', score: 3 },
+    ],
+  },
+  {
+    q: '6. How many financial dependents do you have?',
+    options: [
+      { label: '3 or more', score: 1 },
+      { label: '1–2', score: 2 },
+      { label: 'None', score: 3 },
+    ],
+  },
+  {
+    q: '7. Do you have an emergency fund (3–6 months of expenses)?',
+    options: [
+      { label: 'No', score: 1 },
+      { label: 'Partially (1–2 months)', score: 2 },
+      { label: 'Yes, fully funded', score: 3 },
+    ],
+  },
+  {
+    q: '8. How comfortable are you seeing your portfolio swing ±15% in a year?',
+    options: [
+      { label: 'Very uncomfortable', score: 1 },
+      { label: 'Somewhat uncomfortable', score: 2 },
+      { label: 'Fully comfortable', score: 3 },
+    ],
+  },
+  {
+    q: '9. What is your investment experience?',
+    options: [
+      { label: 'Beginner — mostly FDs and savings', score: 1 },
+      { label: 'Intermediate — mutual funds and some stocks', score: 2 },
+      { label: 'Experienced — direct equity, derivatives, etc.', score: 3 },
+    ],
+  },
+  {
+    q: '10. Which statement best describes your priority?',
+    options: [
+      { label: 'I cannot afford to lose money', score: 1 },
+      { label: 'I want balance between safety and growth', score: 2 },
+      { label: 'I am willing to take higher risk for higher returns', score: 3 },
+    ],
+  },
+];
+
+type RiskBand = 'Conservative' | 'Moderate' | 'Aggressive';
+
+function riskBand(total: number): RiskBand {
+  if (total <= 16) return 'Conservative';
+  if (total <= 23) return 'Moderate';
+  return 'Aggressive';
+}
+
+const BAND_STYLE: Record<RiskBand, string> = {
+  Conservative: 'bg-blue-100 text-blue-800',
+  Moderate: 'bg-yellow-100 text-yellow-800',
+  Aggressive: 'bg-green-100 text-green-800',
+};
+
+const BAND_DESC: Record<RiskBand, string> = {
+  Conservative:
+    'Focus on capital preservation. Suitable allocation: ~70–80% debt (FDs, PPF, debt MFs), 20–30% equity. Avoid high-volatility instruments.',
+  Moderate:
+    'Balanced growth with managed risk. Suitable allocation: ~50% equity, 50% debt. Diversified across large-cap mutual funds, PPF, and some bonds.',
+  Aggressive:
+    'Growth-oriented with high risk tolerance. Suitable allocation: ~70–80% equity (mid/small-cap, direct stocks), 20–30% debt. Longer investment horizon required.',
+};
+
+const STORAGE_KEY = 'wealthiq_risk_profile';
+
+function RiskProfileQuestionnaire() {
+  const [answers, setAnswers] = useState<(number | null)[]>(() => Array(10).fill(null) as null[]);
+  const [saved, setSaved] = useState<{ total: number; band: RiskBand } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setSaved(JSON.parse(raw) as { total: number; band: RiskBand });
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function handleSelect(qi: number, score: number) {
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[qi] = score;
+      return next;
+    });
+  }
+
+  const allAnswered = answers.every((a) => a !== null);
+  const totalScore = answers.reduce<number>((sum, a) => sum + (a ?? 0), 0);
+
+  function handleSave() {
+    const band = riskBand(totalScore);
+    const result = { total: totalScore, band };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+    setSaved(result);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Risk Profile Questionnaire</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {saved && (
+          <div className={`rounded-xl px-4 py-3 text-sm ${BAND_STYLE[saved.band]}`}>
+            <p className="font-semibold">
+              Current profile: {saved.band} (score {saved.total}/30)
+            </p>
+            <p className="mt-1">{BAND_DESC[saved.band]}</p>
+            <p className="mt-1 text-xs opacity-70">
+              Disclaimer: Generic education only. Not SEBI-regulated advice. Consult a financial advisor.
+            </p>
+          </div>
+        )}
+
+        {RISK_QUESTIONS.map((item, qi) => (
+          <div key={qi} className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">{item.q}</p>
+            <div className="flex flex-col gap-1">
+              {item.options.map((opt) => (
+                <label
+                  key={opt.score}
+                  className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg cursor-pointer border transition-colors ${
+                    answers[qi] === opt.score
+                      ? 'border-indigo-400 bg-indigo-50 text-indigo-800'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={`rq_${qi}`}
+                    value={opt.score}
+                    checked={answers[qi] === opt.score}
+                    onChange={() => handleSelect(qi, opt.score)}
+                    className="sr-only"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {allAnswered && (
+          <div className="pt-2 space-y-3">
+            <div className={`rounded-xl px-4 py-3 text-sm ${BAND_STYLE[riskBand(totalScore)]}`}>
+              <p className="font-semibold">
+                Your profile: {riskBand(totalScore)} (score {totalScore}/30)
+              </p>
+              <p className="mt-1">{BAND_DESC[riskBand(totalScore)]}</p>
+            </div>
+            <Button onClick={handleSave}>Save Profile</Button>
+          </div>
+        )}
+
+        {!allAnswered && (
+          <p className="text-xs text-gray-500">Answer all 10 questions to see your risk profile.</p>
         )}
       </CardContent>
     </Card>

@@ -8,6 +8,9 @@ import {
   totalLoanInterest,
   sipGrowthTable,
   monthsToGoal,
+  savingsRate,
+  debtToIncomeRatio,
+  netWorth,
 } from '@/lib/calculations';
 
 describe('sipFutureValue', () => {
@@ -147,7 +150,7 @@ describe('sipGrowthTable', () => {
   it('corpus is monotonically increasing', () => {
     const table = sipGrowthTable(10_000, 12, 5);
     for (let i = 1; i < table.length; i++) {
-      expect(table[i]?.corpus).toBeGreaterThan(table[i - 1]?.corpus);
+      expect(table[i]?.corpus).toBeGreaterThan(table[i - 1]?.corpus ?? 0);
     }
   });
 
@@ -183,5 +186,63 @@ describe('monthsToGoal', () => {
     const m1 = monthsToGoal(3_000_000, 0, 20_000, 12);
     const m2 = monthsToGoal(3_000_000, 0, 30_000, 12);
     expect(m2).toBeLessThan(m1);
+  });
+});
+
+describe('savingsRate', () => {
+  it('computes correctly for standard case', () => {
+    // ₹1L income, ₹60K expenses → 40% savings rate
+    expect(savingsRate(100_000, 60_000)).toBeCloseTo(40, 5);
+  });
+
+  it('returns 0 when income is zero', () => {
+    expect(savingsRate(0, 50_000)).toBe(0);
+  });
+
+  it('returns 0 when expenses equal income', () => {
+    expect(savingsRate(100_000, 100_000)).toBeCloseTo(0, 5);
+  });
+
+  it('returns negative when expenses exceed income', () => {
+    expect(savingsRate(50_000, 70_000)).toBeLessThan(0);
+  });
+});
+
+describe('debtToIncomeRatio', () => {
+  it('computes correctly for standard case', () => {
+    // ₹40K EMI on ₹1L income → 40% DTI
+    expect(debtToIncomeRatio(40_000, 100_000)).toBeCloseTo(40, 5);
+  });
+
+  it('returns 0 when income is zero', () => {
+    expect(debtToIncomeRatio(50_000, 0)).toBe(0);
+  });
+
+  it('returns 0 when there are no EMIs', () => {
+    expect(debtToIncomeRatio(0, 100_000)).toBe(0);
+  });
+
+  it('increases proportionally with higher EMI', () => {
+    const low = debtToIncomeRatio(20_000, 100_000);
+    const high = debtToIncomeRatio(60_000, 100_000);
+    expect(high).toBeGreaterThan(low);
+  });
+});
+
+describe('netWorth', () => {
+  it('returns positive when assets exceed liabilities', () => {
+    expect(netWorth(5_000_000, 2_000_000)).toBe(3_000_000);
+  });
+
+  it('returns negative when liabilities exceed assets', () => {
+    expect(netWorth(1_000_000, 3_000_000)).toBe(-2_000_000);
+  });
+
+  it('returns zero when assets equal liabilities', () => {
+    expect(netWorth(1_000_000, 1_000_000)).toBe(0);
+  });
+
+  it('handles zero inputs', () => {
+    expect(netWorth(0, 0)).toBe(0);
   });
 });

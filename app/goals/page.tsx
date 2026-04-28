@@ -264,7 +264,7 @@ export default function GoalsPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold">{g.goal_name}</p>
-                      <p className="text-xs text-gray-400">{GOAL_LABELS[g.goal_type]}</p>
+                      <p className="text-xs text-gray-500">{GOAL_LABELS[g.goal_type]}</p>
                     </div>
                     <Badge className={statusColor}>{statusLabel}</Badge>
                   </div>
@@ -282,19 +282,19 @@ export default function GoalsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <p className="text-gray-400">Target</p>
+                      <p className="text-gray-500">Target</p>
                       <p className="font-medium">{INR.format(g.target_amount_inr)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-400">Saved</p>
+                      <p className="text-gray-500">Saved</p>
                       <p className="font-medium">{INR.format(g.current_savings_inr)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-400">By</p>
+                      <p className="text-gray-500">By</p>
                       <p className="font-medium">{g.target_date}</p>
                     </div>
                     <div>
-                      <p className="text-gray-400">Required SIP</p>
+                      <p className="text-gray-500">Required SIP</p>
                       <p className="font-medium text-indigo-600">
                         {INR.format(Math.ceil(requiredSip))}/mo
                       </p>
@@ -325,7 +325,7 @@ export default function GoalsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-500">Loading…</p>
           ) : (
             <DataTable
               rows={goals}

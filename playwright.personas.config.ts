@@ -4,12 +4,11 @@ import path from 'path';
 const AUTH_FILE = path.join(__dirname, 'tests/e2e/.auth/session.json');
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests/personas',
   fullyParallel: true,
-  forbidOnly: !!process.env['CI'],
-  retries: process.env['CI'] ? 2 : 0,
-  workers: process.env['CI'] ? 1 : 2,
-  reporter: [['html', { outputFolder: 'tests/reports/playwright' }], ['list']],
+  retries: 0,
+  workers: 2,
+  reporter: [['html', { outputFolder: 'tests/reports/personas-playwright' }], ['list']],
   globalSetup: './tests/e2e/global-setup.ts',
   use: {
     baseURL: 'http://localhost:3000',
@@ -25,6 +24,6 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env['CI'],
+    reuseExistingServer: true,
   },
 });
