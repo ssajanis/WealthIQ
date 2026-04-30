@@ -55,6 +55,12 @@ export default function FinancialAnalysisPage() {
     defaultValues: { category: 'housing', is_fixed: true },
   });
 
+  const watchedSourceType = incomeForm.watch('source_type');
+  const watchedTaxRegime = incomeForm.watch('tax_regime');
+  const watchedIsPrimary = incomeForm.watch('is_primary_earner');
+  const watchedCategory = expenseForm.watch('category');
+  const watchedIsFixed = expenseForm.watch('is_fixed');
+
   async function fetchAll() {
     setLoading(true);
     const [incRes, expRes, invRes, loRes, goRes, insRes] = await Promise.all([
@@ -170,7 +176,21 @@ export default function FinancialAnalysisPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Financial Analysis</h1>
+      <h1 className="text-3xl font-semibold text-gray-900">Financial Analysis</h1>
+
+      {incomeError === 'Unauthorised' || expenseError === 'Unauthorised' ? (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-base text-amber-800">
+          <strong>Not logged in.</strong> Please{' '}
+          <a href="/setup" className="underline font-medium">
+            complete setup
+          </a>{' '}
+          or{' '}
+          <a href="/login" className="underline font-medium">
+            log in
+          </a>{' '}
+          before adding data.
+        </div>
+      ) : null}
 
       {!loading && (incomes.length > 0 || expenses.length > 0) && (
         <div className="grid grid-cols-2 gap-4">
@@ -192,32 +212,37 @@ export default function FinancialAnalysisPage() {
       {/* ── Income ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Add Income Source</CardTitle>
+          <CardTitle className="text-xl">Add Income Source</CardTitle>
         </CardHeader>
         <CardContent>
           <form
             onSubmit={incomeForm.handleSubmit(onIncomeSubmit)}
             noValidate
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2"
           >
-            <div className="space-y-1">
-              <Label htmlFor="source_name">Source Name</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="source_name">
+                Source Name
+              </Label>
               <Input
                 id="source_name"
+                className="h-11 text-base"
                 placeholder="e.g. Primary Salary"
                 {...incomeForm.register('source_name')}
               />
               {incomeForm.formState.errors.source_name && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-base text-red-600" role="alert">
                   {incomeForm.formState.errors.source_name.message}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="source_type">Type</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="source_type">
+                Type
+              </Label>
               <Select
-                defaultValue="salary"
+                value={watchedSourceType}
                 onValueChange={(v) =>
                   incomeForm.setValue('source_type', v as IncomeInput['source_type'])
                 }
@@ -235,26 +260,32 @@ export default function FinancialAnalysisPage() {
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="gross_annual">Annual Gross Income (₹)</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="gross_annual">
+                Annual Gross Income (₹)
+              </Label>
               <Input
                 id="gross_annual"
                 type="number"
                 min={0}
+                className="h-11 text-base"
                 placeholder="2500000"
                 {...incomeForm.register('gross_annual_inr')}
               />
+              <p className="text-sm text-gray-500">e.g. ₹25,00,000 for ₹25 lakh per year</p>
               {incomeForm.formState.errors.gross_annual_inr && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-base text-red-600" role="alert">
                   {incomeForm.formState.errors.gross_annual_inr.message}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="tax_regime">Tax Regime</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="tax_regime">
+                Tax Regime
+              </Label>
               <Select
-                defaultValue="new"
+                value={watchedTaxRegime}
                 onValueChange={(v) =>
                   incomeForm.setValue('tax_regime', v as IncomeInput['tax_regime'])
                 }
@@ -269,10 +300,12 @@ export default function FinancialAnalysisPage() {
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="is_primary">Primary Earner?</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="is_primary">
+                Primary Earner?
+              </Label>
               <Select
-                defaultValue="false"
+                value={String(watchedIsPrimary)}
                 onValueChange={(v) => incomeForm.setValue('is_primary_earner', v === 'true')}
               >
                 <SelectTrigger id="is_primary">
@@ -285,13 +318,13 @@ export default function FinancialAnalysisPage() {
               </Select>
             </div>
 
-            {incomeError && (
-              <p className="text-sm text-red-600 col-span-full" role="alert">
+            {incomeError && incomeError !== 'Unauthorised' && (
+              <p className="text-base text-red-600 col-span-full" role="alert">
                 {incomeError}
               </p>
             )}
             <div className="col-span-full">
-              <Button type="submit" disabled={submittingIncome}>
+              <Button className="h-11 text-base px-6" type="submit" disabled={submittingIncome}>
                 {submittingIncome ? 'Saving…' : 'Add Income Source'}
               </Button>
             </div>
@@ -301,7 +334,7 @@ export default function FinancialAnalysisPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Income Sources</CardTitle>
+          <CardTitle className="text-xl">Income Sources</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -334,18 +367,20 @@ export default function FinancialAnalysisPage() {
       {/* ── Expenses ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Add Monthly Expense</CardTitle>
+          <CardTitle className="text-xl">Add Monthly Expense</CardTitle>
         </CardHeader>
         <CardContent>
           <form
             onSubmit={expenseForm.handleSubmit(onExpenseSubmit)}
             noValidate
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2"
           >
-            <div className="space-y-1">
-              <Label htmlFor="exp_category">Category</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="exp_category">
+                Category
+              </Label>
               <Select
-                defaultValue="housing"
+                value={watchedCategory}
                 onValueChange={(v) =>
                   expenseForm.setValue('category', v as ExpenseInput['category'])
                 }
@@ -375,40 +410,48 @@ export default function FinancialAnalysisPage() {
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="exp_description">Description</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="exp_description">
+                Description
+              </Label>
               <Input
                 id="exp_description"
+                className="h-11 text-base"
                 placeholder="e.g. Monthly rent"
                 {...expenseForm.register('description')}
               />
               {expenseForm.formState.errors.description && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-base text-red-600" role="alert">
                   {expenseForm.formState.errors.description.message}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="monthly_amount_exp">Monthly Amount (₹)</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="monthly_amount_exp">
+                Monthly Amount (₹)
+              </Label>
               <Input
                 id="monthly_amount_exp"
                 type="number"
                 min={0}
+                className="h-11 text-base"
                 placeholder="40000"
                 {...expenseForm.register('monthly_amount_inr')}
               />
               {expenseForm.formState.errors.monthly_amount_inr && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-base text-red-600" role="alert">
                   {expenseForm.formState.errors.monthly_amount_inr.message}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="is_fixed_exp">Fixed Cost?</Label>
+            <div className="space-y-2">
+              <Label className="text-base font-medium" htmlFor="is_fixed_exp">
+                Fixed Cost?
+              </Label>
               <Select
-                defaultValue="true"
+                value={String(watchedIsFixed)}
                 onValueChange={(v) => expenseForm.setValue('is_fixed', v === 'true')}
               >
                 <SelectTrigger id="is_fixed_exp">
@@ -421,13 +464,13 @@ export default function FinancialAnalysisPage() {
               </Select>
             </div>
 
-            {expenseError && (
-              <p className="text-sm text-red-600 col-span-full" role="alert">
+            {expenseError && expenseError !== 'Unauthorised' && (
+              <p className="text-base text-red-600 col-span-full" role="alert">
                 {expenseError}
               </p>
             )}
             <div className="col-span-full">
-              <Button type="submit" disabled={submittingExpense}>
+              <Button className="h-11 text-base px-6" type="submit" disabled={submittingExpense}>
                 {submittingExpense ? 'Saving…' : 'Add Expense'}
               </Button>
             </div>
@@ -437,7 +480,7 @@ export default function FinancialAnalysisPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Monthly Expenses</CardTitle>
+          <CardTitle className="text-xl">Monthly Expenses</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -471,7 +514,7 @@ export default function FinancialAnalysisPage() {
       {(incomes.length > 0 || expenses.length > 0) && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Run Analysis</CardTitle>
+            <CardTitle className="text-xl">Run Analysis</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button
